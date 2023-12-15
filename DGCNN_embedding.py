@@ -111,10 +111,6 @@ class DGCNN(nn.Module):
             subg_sp = subg_sp.cuda()
             node_degs = node_degs.cuda()
 
-        n2n_sp = Variable(n2n_sp)
-        subg_sp = Variable(subg_sp)
-        node_degs = Variable(node_degs)
-
         top_indices,h = self.sortpooling_embedding(node_feat, n2n_sp, subg_sp, graph_sizes, node_degs)
         return top_indices,h
 

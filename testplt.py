@@ -1,23 +1,23 @@
-from sklearn.svm import LinearSVC
-import numpy as np
+import torch
+import torch.nn as nn
 
-# 训练数据
-X_train = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-y_train = [0, 1, 0]
+class SimpleNet(nn.Module):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.fc1 = nn.Linear(10, 5)  # 一个线性层，输入维度为10，输出维度为5
+        self.relu = nn.ReLU()  # ReLU 激活函数
 
-# 使用线性SVM训练模型
-svm = LinearSVC()
-svm.fit(X_train, y_train)
+    def forward(self, x):
+        x = self.fc1(x)  # 数据经过第一个线性层
+        x = self.relu(x)  # 通过 ReLU 激活函数
+        return x
 
-# 获取特征权重（系数）
-coef = svm.coef_[0]
+# 创建一个模型实例
+model = SimpleNet()
 
-# 计算特征的绝对权重值
-abs_coef = np.abs(coef)
+# 假设有一个输入张量
+input_data = torch.randn(3, 10)  # 3个样本，每个样本具有10个特征
 
-# 获取特征重要性排名
-feature_importance_ranking = np.argsort(abs_coef)[::-1]
-
-# 打印特征重要性排名
-for rank, feature_index in enumerate(feature_importance_ranking):
-    print(f"Rank {rank+1}: Feature {feature_index}, Importance: {abs_coef[feature_index]}")
+# 将输入数据传递给模型，调用 forward 方法
+output = model(input_data)
+print(output)

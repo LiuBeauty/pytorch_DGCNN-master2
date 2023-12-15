@@ -17,7 +17,7 @@ print('On DGCNN_embeding start')
 from DGCNN_embedding import DGCNN
 from mlp_dropout import MLPClassifier
 from sklearn import metrics
-from util import net_paramter, load_data, load_data_for_readsClassification
+from util import net_paramter, load_data
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import csv
-where = []
+
 
 
 class Classifier(nn.Module):
