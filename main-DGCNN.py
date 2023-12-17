@@ -167,8 +167,6 @@ if __name__ == '__main__':
         print('\033[92maverage training of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (
         epoch, avg_loss[0], avg_loss[1], avg_loss[2]))
         classifier.eval()
-
-
         test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
 
         test_loss1.append(test_loss[0])
