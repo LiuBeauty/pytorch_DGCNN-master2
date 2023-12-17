@@ -95,8 +95,6 @@ def loop_dataset(g_list, classifier, sample_idxes, optimizer=None, bsize=net_par
         logits, loss, acc, y = classifier(batch_graph)
         all_scores.append(logits[:, 1].cpu().detach())  # for binary classification
 
-
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
