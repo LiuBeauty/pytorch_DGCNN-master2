@@ -168,21 +168,14 @@ if __name__ == '__main__':
         epoch, avg_loss[0], avg_loss[1], avg_loss[2]))
         classifier.eval()
 
-        if epoch != net_paramter.num_epochs - 1:
-            test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
-        else:
-            test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
 
-        if not net_paramter.printAUC:
-            test_loss[2] = 0.0
+        test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
+
         test_loss1.append(test_loss[0])
         test_acc1.append(test_loss[1])
-        print('\033[93maverage test of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (
-        epoch, test_loss[0], test_loss[1], test_loss[2]))
+        print('\033[93maverage test of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (epoch, test_loss[0], test_loss[1], test_loss[2]))
 
-    # final_result = loop_dataset(test_graphs,classifier,list(range(len(test_graphs))))
-    # logits, loss, acc, y = classifier(test_graphs)
-    # print(f'-------final accuracy{final_result}')
+
 
     plt.figure(1)
     plt.plot(num_epoch, train_loss1, 'r', label='Train loss')
@@ -194,8 +187,7 @@ if __name__ == '__main__':
     plt.plot(num_epoch, train_acc1, 'r', label='Train Accuracy')
     plt.plot(num_epoch, test_acc1, 'b', label='Test Accruay')
     plt.legend()
-    plt.axhline(0.7)
-    plt.axhline(0.8)
+
     plt.savefig('/public/jxliu/testProject2/RESULT/Reads_classification/accuracy_BRCA.png')
 
 """
