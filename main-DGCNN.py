@@ -175,8 +175,6 @@ if __name__ == '__main__':
         test_acc1.append(test_loss[1])
         print('\033[93maverage test of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (epoch, test_loss[0], test_loss[1], test_loss[2]))
 
-
-
     plt.figure(1)
     plt.plot(num_epoch, train_loss1, 'r', label='Train loss')
     plt.plot(num_epoch, test_loss1, 'b', label='Test loss')
