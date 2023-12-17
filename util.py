@@ -92,7 +92,7 @@ def load_data():
     label_dict = {}
     feat_dict = {}
 
-    with open('data/%s/%s.txt' % (net_paramter.data, net_paramter.data), 'r') as f:
+    with open('data2/%s/%s.txt' % (net_paramter.data, net_paramter.data), 'r') as f:
         n_g = int(f.readline().strip())
         for i in range(n_g):
             row = f.readline().strip().split()

@@ -44,13 +44,11 @@ class Classifier(nn.Module):
     def forward(self, batch_graph):
         with torch.no_grad():  # Make tensor's  requires_grad = False
             feature_label = self.PrepareFeatureLabel(batch_graph)
-
             node_feat, labels = feature_label
             edge_feat = None
 
         embed = self.gnn(batch_graph, node_feat, edge_feat)
         return self.mlp(embed, labels)
-
 
 
 
@@ -98,10 +96,10 @@ def loop_dataset(g_list, classifier, sample_idxes, optimizer=None, bsize=net_par
         all_scores.append(logits[:, 1].cpu().detach())  # for binary classification
 
 
-        if optimizer is not None:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
         loss = loss.data.cpu().detach().numpy()
         pbar.set_description('loss: %0.5f acc: %0.5f' % (loss, acc))
@@ -109,8 +107,7 @@ def loop_dataset(g_list, classifier, sample_idxes, optimizer=None, bsize=net_par
 
         n_samples += len(selected_idx)
 
-    if optimizer is None:
-        assert n_samples == len(sample_idxes)
+
     total_loss = np.array(total_loss)
     avg_loss = np.sum(total_loss, 0) / n_samples
     all_scores = torch.cat(all_scores).cpu().numpy()
