@@ -168,7 +168,6 @@ if __name__ == '__main__':
         epoch, avg_loss[0], avg_loss[1], avg_loss[2]))
         classifier.eval()
         test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
-
         test_loss1.append(test_loss[0])
         test_acc1.append(test_loss[1])
         print('\033[93maverage test of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (epoch, test_loss[0], test_loss[1], test_loss[2]))
@@ -183,7 +182,6 @@ if __name__ == '__main__':
     plt.plot(num_epoch, train_acc1, 'r', label='Train Accuracy')
     plt.plot(num_epoch, test_acc1, 'b', label='Test Accruay')
     plt.legend()
-
     plt.savefig('/public/jxliu/testProject2/RESULT/Reads_classification/accuracy_BRCA.png')
 
 """
