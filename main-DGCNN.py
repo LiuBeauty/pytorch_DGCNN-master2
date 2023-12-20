@@ -3,6 +3,7 @@ import os
 import torch
 import random
 import numpy as np
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from torch.autograd import Variable
 from torch.nn.parameter import Parameter
@@ -22,33 +23,55 @@ import csv
 
 
 
-
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.gnn = DGCNN(latent_dim=net_paramter.latent_dim,
-                         output_dim=net_paramter.out_dim,
+
+        self.gnn = DGCNN(epoch = net_paramter.num_epochs,latent_dim=net_paramter.latent_dim,
                          num_node_feats=net_paramter.feat_dim + net_paramter.attr_dim,
-                         num_edge_feats=net_paramter.edge_feat_dim,
                          k=net_paramter.sortpooling_k,
+                         conv1d_channels= net_paramter.conv1d_channels,
+                         conv1d_kws=net_paramter.conv1d_kws,
                          conv1d_activation=net_paramter.conv1d_activation)
 
         out_dim = self.gnn.dense_dim
-
-
         self.mlp = MLPClassifier(input_size=out_dim, hidden_size=net_paramter.hidden, num_class=net_paramter.num_class,
                                  with_dropout=net_paramter.dropout)
 
+    def PrepareFeatureLabel(self, batch_graph):
+        labels = torch.LongTensor(len(batch_graph))
+        n_nodes = 0
+        concat_tag = []
+        concat_feat = []
 
+        for i in range(len(batch_graph)):
+            labels[i] = batch_graph[i].label
+            n_nodes += batch_graph[i].num_nodes
+            concat_tag += batch_graph[i].node_tags
+            tmp = torch.from_numpy(batch_graph[i].node_features).type('torch.FloatTensor')
+            concat_feat.append(tmp)
+
+        concat_tag = torch.LongTensor(concat_tag).view(-1, 1)
+        node_tag = torch.zeros(n_nodes, net_paramter.feat_dim)
+        node_tag.scatter_(1, concat_tag, 1)
+
+        node_feat = torch.cat(concat_feat, 0)
+        node_feat = torch.cat([node_tag.type_as(node_feat), node_feat], 1)
+
+        if net_paramter.mode == 'gpu':
+            node_feat = node_feat.cuda()
+            labels = labels.cuda()
+
+        return node_feat, labels
 
     def forward(self, batch_graph):
-        with torch.no_grad():  # Make tensor's  requires_grad = False
-            feature_label = self.PrepareFeatureLabel(batch_graph)
-            node_feat, labels = feature_label
-            edge_feat = None
 
-        embed = self.gnn(batch_graph, node_feat, edge_feat)
-        return self.mlp(embed, labels)
+        feature_label = self.PrepareFeatureLabel(batch_graph)
+        node_feat, labels = feature_label
+        embed,top_indices = self.gnn(batch_graph,node_feat)
+
+        return self.mlp(top_indices,embed, labels)
+
 
 
 
@@ -90,17 +113,16 @@ def loop_dataset(g_list, classifier, sample_idxes, optimizer=None, bsize=net_par
         batch_graph = [g_list[idx] for idx in selected_idx]
         targets = [g_list[idx].label for idx in selected_idx]
         all_targets += targets
-
-
         logits, loss, acc, y = classifier(batch_graph)
         all_scores.append(logits[:, 1].cpu().detach())  # for binary classification
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        if optimizer is not None:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         loss = loss.data.cpu().detach().numpy()
-        pbar.set_description('loss: %0.5f acc: %0.5f' % (loss, acc))
+        #pbar.set_description('epoch:%d loss: %0.5f acc: %0.5f' % (loss, acc,epoch))
         total_loss.append(np.array([loss, acc]) * len(selected_idx))
 
         n_samples += len(selected_idx)
@@ -110,15 +132,7 @@ def loop_dataset(g_list, classifier, sample_idxes, optimizer=None, bsize=net_par
     avg_loss = np.sum(total_loss, 0) / n_samples
     all_scores = torch.cat(all_scores).cpu().numpy()
 
-    # np.savetxt('test_scores.txt', all_scores)  # output test predictions
-
-    if net_paramter.printAUC:
-        all_targets = np.array(all_targets)
-        fpr, tpr, _ = metrics.roc_curve(all_targets, all_scores, pos_label=1)
-        auc = metrics.auc(fpr, tpr)
-        avg_loss = np.concatenate((avg_loss, [auc]))
-    else:
-        avg_loss = np.concatenate((avg_loss, [0.0]))
+    avg_loss = np.concatenate((avg_loss, [0.0]))
 
     return avg_loss
 
@@ -129,7 +143,16 @@ if __name__ == '__main__':
     np.random.seed(net_paramter.seed)
     torch.manual_seed(net_paramter.seed)
 
-    train_graphs, test_graphs = load_data()
+    graphs = load_data()
+    indice = np.arange(0, len(graphs) - 1)
+
+    data_train_index, data_test_index, label_train_index, label_test_index = train_test_split(indice, indice,
+                                                                                              random_state=0,
+                                                                                              test_size=0.2)
+
+    train_graphs = [graphs[i] for i in data_train_index]
+    test_graphs = [graphs[i] for i in data_test_index]
+
     print('# train: %d, # test: %d' % (len(train_graphs), len(test_graphs)))
 
     if net_paramter.sortpooling_k <= 1:
@@ -146,6 +169,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(classifier.parameters(), lr=net_paramter.learning_rate)
 
     train_idxes = list(range(len(train_graphs)))
+
     best_loss = None
     train_acc1 = []
     train_loss1 = []
@@ -155,32 +179,32 @@ if __name__ == '__main__':
     # net_paramter.num_epochs
     for epoch in range(net_paramter.num_epochs):
         num_epoch.append(epoch)
-        random.shuffle(train_idxes)
+
         classifier.train()
+
         avg_loss = loop_dataset(train_graphs, classifier, train_idxes, optimizer=optimizer)
-        if not net_paramter.printAUC:
-            avg_loss[2] = 0.0
+
         train_loss1.append(avg_loss[0])
         train_acc1.append(avg_loss[1])
-        print('\033[92maverage training of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (
-        epoch, avg_loss[0], avg_loss[1], avg_loss[2]))
+        print('\033[92maverage training of epoch %d: loss %.5f acc %.5f \033[0m' % (epoch, avg_loss[0], avg_loss[1]))
+
         classifier.eval()
         test_loss = loop_dataset(test_graphs, classifier, list(range(len(test_graphs))))
         test_loss1.append(test_loss[0])
         test_acc1.append(test_loss[1])
-        print('\033[93maverage test of epoch %d: loss %.5f acc %.5f auc %.5f\033[0m' % (epoch, test_loss[0], test_loss[1], test_loss[2]))
+        print('\033[93maverage test of epoch %d: loss %.5f acc %.5f \033[0m' % (epoch, test_loss[0], test_loss[1]))
 
     plt.figure(1)
     plt.plot(num_epoch, train_loss1, 'r', label='Train loss')
     plt.plot(num_epoch, test_loss1, 'b', label='Test loss')
     plt.legend()
-    plt.savefig('/public/jxliu/testProject2/RESULT/Reads_classification/loss_BRCA.png')
+    plt.savefig('/data/home/jxliu/pytorch_DGCNN-master2/result/loss_BRCA_only_DGCNN.png')
 
     plt.figure(2)
     plt.plot(num_epoch, train_acc1, 'r', label='Train Accuracy')
     plt.plot(num_epoch, test_acc1, 'b', label='Test Accruay')
     plt.legend()
-    plt.savefig('/public/jxliu/testProject2/RESULT/Reads_classification/accuracy_BRCA.png')
+    plt.savefig('/data/home/jxliu/pytorch_DGCNN-master2/result/accuracy_BRCA_only_DGCNN.png')
 
 """
     # plt.figure(3)

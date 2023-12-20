@@ -15,7 +15,7 @@ from lib.gnn_lib import GNNLIB
 from lib.pytorch_util import weights_init, gnn_spmm
 
 class DGCNN(nn.Module):
-    def __init__(self, epoch,num_node_feats,  latent_dim, k, conv1d_channels, conv1d_kws, conv1d_activation):
+    def __init__(self, num_node_feats,  latent_dim, k, conv1d_channels, conv1d_kws, conv1d_activation):
         super(DGCNN, self).__init__()
 
         self.latent_dim = latent_dim
@@ -23,7 +23,7 @@ class DGCNN(nn.Module):
         self.k = k
         self.total_latent_dim = sum(latent_dim)
         conv1d_kws[0] = self.total_latent_dim
-        self.full_epoch = epoch
+
         self.conv_params = nn.ModuleList()
         self.conv_params.append(nn.Linear(num_node_feats, latent_dim[0]))
         for i in range(1, len(latent_dim)):
@@ -45,6 +45,7 @@ class DGCNN(nn.Module):
         cur_message_layer = node_feat
 
         cat_message_layers = []
+
         while lv < len(self.latent_dim):
             n2npool = gnn_spmm(n2n_sp, cur_message_layer) + cur_message_layer  # Y = (A + I) * X
             node_linear = self.conv_params[lv](n2npool)  # Y = Y * W
@@ -94,6 +95,7 @@ class DGCNN(nn.Module):
         to_dense = conv1d_res.view(len(graph_sizes), -1)
         acted_conv1d = self.conv1d_activation(to_dense)
         topk_indices = topk_indices.tolist()
+
         return acted_conv1d,topk_indices
 
 
@@ -106,10 +108,10 @@ class DGCNN(nn.Module):
 
         n2n_sp, e2n_sp, subg_sp = GNNLIB.PrepareSparseMatrices(graph_list)
 
-        if torch.cuda.is_available() and isinstance(node_feat, torch.cuda.FloatTensor):
-            n2n_sp = n2n_sp.cuda()
-            subg_sp = subg_sp.cuda()
-            node_degs = node_degs.cuda()
+
+        n2n_sp = n2n_sp.cuda()
+        subg_sp = subg_sp.cuda()
+        node_degs = node_degs.cuda()
 
         top_indices,h = self.sortpooling_embedding(node_feat, n2n_sp, subg_sp, graph_sizes, node_degs)
         return top_indices,h

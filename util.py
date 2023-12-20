@@ -33,6 +33,7 @@ import argparse
 # net_paramter, _ = cmd_opt.parse_known_args()
 # net_paramter.latent_dim = [int(x) for x in net_paramter.latent_dim.split('-')]
 
+
 class net_paramter:
     attr_dim = 1
     data = 'BRCA'
@@ -40,12 +41,12 @@ class net_paramter:
     seed = 0
     feat_dim = 3
     test_number = 175
-    num_epochs = 15
+    num_epochs = 800
     latent_dim = '26-24-24-1'
     sortpooling_k = 0.5
     conv1d_activation = 'Tanh'
     out_dim = 0
-    learning_rate = 0.00001
+    learning_rate = 0.0005
     dropout = False
     hidden = 128
     mode = 'gpu'
@@ -92,11 +93,14 @@ def load_data():
     label_dict = {}
     feat_dict = {}
 
-    with open('data2/%s/%s.txt' % (net_paramter.data, net_paramter.data), 'r') as f:
+    with open('data/%s/%s.txt' % (net_paramter.data, net_paramter.data), 'r') as f:
         n_g = int(f.readline().strip())
+
         for i in range(n_g):
             row = f.readline().strip().split()
+            #print(row)
             n, l = [int(w) for w in row]
+
             if not l in label_dict:
                 mapped = len(label_dict)
                 label_dict[l] = mapped
@@ -120,7 +124,6 @@ def load_data():
 
             node_features = np.stack(node_features)
             node_feature_flag = True
-            assert len(g) == n
             g_list.append(GNNGraph(g, l, node_tags, node_features))
 
     for g in g_list:
